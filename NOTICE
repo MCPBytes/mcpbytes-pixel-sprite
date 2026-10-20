@@ -1,0 +1,38 @@
+mcpbytes-pixel-sprite
+Copyright (C) 2026 King Of The Hour, LLC
+
+This program is free software: you can redistribute it and/or modify it under the terms of the
+GNU Affero General Public License, version 3 only (LICENSE). It comes with no warranty.
+
+Exception: the files in the package's templates folder (src/mcpbytes_pixel_sprite/templates/) are
+copied into every export (IMPORTING.md and the Unity importer script). They are licensed under MIT No Attribution
+(LICENSES/MIT-0.txt), so you can ship them in your game or project under any terms. The
+sprites, frames, previews and engine files this program generates belong to you; the AGPL
+does not apply to them.
+
+"MCPBytes" is a trade name of King Of The Hour, LLC. These licences grant no right to use it,
+except to describe this software truthfully.
+
+Model weights
+-------------
+This package contains no model weights. On first use it downloads these files, at pinned
+commits, from Hugging Face; they are licensed to you by their publishers, not by us:
+
+- FLUX.2 [klein] base 4B (transformer, VAE, tokenizer, configs) by Black Forest Labs,
+  Apache-2.0: https://huggingface.co/black-forest-labs/FLUX.2-klein-base-4B
+- pixel_spritesheet_4walk_small_lora_v1 by svntax-dev, Apache-2.0:
+  https://huggingface.co/svntax-dev/pixel_spritesheet_4walk_small_lora_v1
+  Its author credits the training data as spritesheets edited from and based on a template
+  spritesheet by George Bailey (https://opengameart.org/content/16x16-game-assets), licensed
+  under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
+- Qwen3 4B text encoder, as distributed by Comfy-Org in z_image_turbo, Apache-2.0:
+  https://huggingface.co/Comfy-Org/z_image_turbo
+
+None of these licences establishes rights in generated images, training templates or the
+reference images you supply. Use references you have the right to use.
+
+Runtime libraries
+-----------------
+Installed separately by your package manager under their own licences, including PyTorch
+(BSD-3-Clause), Diffusers, Transformers, PEFT, Accelerate, safetensors, tokenizers,
+sentencepiece and huggingface_hub (Apache-2.0), Pillow (MIT-CMU) and the MCP Python SDK (MIT).

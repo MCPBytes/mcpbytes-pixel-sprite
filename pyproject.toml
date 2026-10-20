@@ -1,0 +1,36 @@
+[project]
+name = "mcpbytes-pixel-sprite"
+version = "0.1.2"
+description = "Generate 32x32 pixel-art character sprite sheets with walk animations, Godot and Unity exports, on your own GPU. CLI and MCP server."
+readme = "README.md"
+license = "AGPL-3.0-only AND MIT-0"
+license-files = ["LICENSE", "LICENSES/MIT-0.txt", "NOTICE"]
+authors = [{ name = "King Of The Hour, LLC" }]
+keywords = ["pixel art", "sprite", "spritesheet", "mcp", "godot", "unity", "flux"]
+requires-python = ">=3.11,<3.14"
+# Inference libraries are pinned to the versions the hosted tool was qualified with: other
+# versions can change the image a seed produces.
+dependencies = [
+    "mcpbytes-core>=0.1,<0.2",
+    "mcp>=2.3,<3",
+    "pillow>=12.3",
+    "torch==2.8.0",
+    "diffusers==0.40.0",
+    "transformers==5.17.0",
+    "peft==0.21.0",
+    "accelerate==1.15.0",
+    "safetensors==0.8.0",
+    "tokenizers==0.23.2",
+    "sentencepiece==0.2.2",
+]
+
+[project.scripts]
+mcpbytes-pixel-sprite = "mcpbytes_pixel_sprite.cli:main"
+
+[project.urls]
+Homepage = "https://mcpbytes.com"
+Source = "https://github.com/MCPBytes/mcpbytes-pixel-sprite"
+
+[build-system]
+requires = ["uv_build>=0.13,<0.14"]
+build-backend = "uv_build"

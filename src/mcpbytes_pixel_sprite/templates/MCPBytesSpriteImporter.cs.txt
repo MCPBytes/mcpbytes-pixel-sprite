@@ -1,0 +1,160 @@
+// Install once as Assets/Editor/MCPBytesSpriteImporter.cs. Requires Unity 6 and 2D Sprite.
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
+using UnityEditor;
+using UnityEditor.Animations;
+using UnityEditor.U2D.Sprites;
+using UnityEngine;
+
+public static class MCPBytesSpriteImporter
+{
+    [Serializable] public class FrameRect
+    {
+        public float x, y, width, height;
+        public Rect ToRect() => new Rect(x, y, width, height);
+    }
+    [Serializable] public class Frame { public string name; public FrameRect rect; public Vector2 pivot; }
+    [Serializable] public class Motion { public string name; public string[] frames; public int[] durations_ms; public bool loop; }
+    [Serializable] public class Definition
+    {
+        public int schema_version, width, height;
+        public string sheet;
+        public float pixels_per_unit;
+        public Frame[] frames;
+        public Motion[] animations;
+    }
+
+    const string Menu = "Tools/MCPBytes/Import selected sprite export";
+    static readonly Regex Identifier = new Regex(@"^[a-zA-Z][a-zA-Z0-9_-]{0,63}$");
+
+    [MenuItem(Menu, true)]
+    static bool CanImport() => AssetDatabase.GetAssetPath(Selection.activeObject).Replace('\\', '/').EndsWith("/unity/import.json", StringComparison.Ordinal);
+
+    [MenuItem(Menu)]
+    static void ImportSelected()
+    {
+        try { Selection.activeObject = AssetDatabase.LoadAssetAtPath<GameObject>(Import(AssetDatabase.GetAssetPath(Selection.activeObject))); }
+        catch (Exception error) { Debug.LogException(error); }
+    }
+
+    static bool Finite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
+    static void Require(bool condition, string message) { if (!condition) throw new InvalidDataException(message); }
+
+    // Public for editor automation. Only the selected export under Assets is changed.
+    public static string Import(string definitionPath)
+    {
+        string assets = Path.GetFullPath(Application.dataPath);
+        string path = Path.GetFullPath(Path.IsPathRooted(definitionPath) ? definitionPath : Path.Combine(Directory.GetParent(assets).FullName, definitionPath));
+        Require(path.StartsWith(assets + Path.DirectorySeparatorChar, StringComparison.Ordinal), "Extract the export under this project's Assets folder.");
+        Require(path.Replace('\\', '/').EndsWith("/unity/import.json", StringComparison.Ordinal), "Select unity/import.json from an MCPBytes export.");
+        Require(new FileInfo(path).Length <= 1024 * 1024, "Import metadata is too large.");
+        var data = JsonUtility.FromJson<Definition>(File.ReadAllText(path));
+        Validate(data);
+        string exportRoot = Directory.GetParent(Path.GetDirectoryName(path)).FullName;
+        string sheetFile = Path.Combine(exportRoot, "sheet.png");
+        string assetRoot = "Assets" + exportRoot.Substring(assets.Length).Replace('\\', '/');
+        string sheetPath = assetRoot + "/sheet.png";
+        Require(File.Exists(sheetFile), "Keep sheet.png beside the exported manifest and engine folders.");
+        AssetDatabase.ImportAsset(sheetPath, ImportAssetOptions.ForceSynchronousImport);
+        var importer = AssetImporter.GetAtPath(sheetPath) as TextureImporter;
+        Require(importer != null, "The sheet is not a supported texture.");
+        importer.textureType = TextureImporterType.Sprite;
+        importer.spriteImportMode = SpriteImportMode.Multiple;
+        importer.spritePixelsPerUnit = data.pixels_per_unit;
+        importer.filterMode = FilterMode.Point;
+        importer.mipmapEnabled = false;
+        importer.textureCompression = TextureImporterCompression.Uncompressed;
+        importer.npotScale = TextureImporterNPOTScale.None;
+        importer.maxTextureSize = Mathf.Max(32, Mathf.NextPowerOfTwo(Mathf.Max(data.width, data.height)));
+        importer.alphaIsTransparency = true;
+        var textureSettings = new TextureImporterSettings();
+        importer.ReadTextureSettings(textureSettings);
+        textureSettings.spriteMeshType = SpriteMeshType.FullRect;
+        importer.SetTextureSettings(textureSettings);
+        importer.SaveAndReimport();
+        var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(sheetPath);
+        Require(texture != null && texture.width == data.width && texture.height == data.height, "Sheet dimensions differ from the export metadata.");
+
+        var factories = new SpriteDataProviderFactories(); factories.Init();
+        var provider = factories.GetSpriteEditorDataProviderFromObject(importer);
+        Require(provider != null, "Install Unity's 2D Sprite package before importing.");
+        provider.InitSpriteEditorDataProvider();
+        var existing = provider.GetSpriteRects().GroupBy(r => r.name).ToDictionary(g => g.Key, g => g.First().spriteID);
+        var rectangles = data.frames.Select(f => new SpriteRect {
+            name = f.name, rect = f.rect.ToRect(), pivot = f.pivot, alignment = SpriteAlignment.Custom,
+            spriteID = existing.TryGetValue(f.name, out var previous) ? previous : GUID.Generate()
+        }).ToArray();
+        provider.SetSpriteRects(rectangles);
+        var names = provider.GetDataProvider<ISpriteNameFileIdDataProvider>();
+        Require(names != null, "The Sprite Editor name provider is unavailable.");
+        names.SetNameFileIdPairs(rectangles.Select(r => new SpriteNameFileIdPair(r.name, r.spriteID)));
+        provider.Apply(); importer.SaveAndReimport();
+        var sprites = AssetDatabase.LoadAllAssetsAtPath(sheetPath).OfType<Sprite>().ToDictionary(s => s.name);
+        Require(data.frames.All(f => sprites.ContainsKey(f.name)), "Unity did not import every frame.");
+
+        string destination = AssetDatabase.GenerateUniqueAssetPath(assetRoot + "/MCPBytes");
+        AssetDatabase.CreateFolder(assetRoot, Path.GetFileName(destination));
+        var controller = AnimatorController.CreateAnimatorControllerAtPath(destination + "/character.controller");
+        foreach (var motion in data.animations)
+        {
+            var clip = new AnimationClip { name = motion.name, frameRate = 100f, wrapMode = motion.loop ? WrapMode.Loop : WrapMode.ClampForever };
+            var keys = new ObjectReferenceKeyframe[motion.frames.Length + 1];
+            int elapsedMs = 0;
+            for (int i = 0; i < motion.frames.Length; i++)
+            {
+                keys[i] = new ObjectReferenceKeyframe { time = elapsedMs / 1000f, value = sprites[motion.frames[i]] };
+                elapsedMs += motion.durations_ms[i];
+            }
+            // Unity object-reference curves include one sample interval after the final key.
+            // Hold the last pose until total-10ms at 100fps, avoiding an extra frame at the loop seam.
+            keys[keys.Length - 1] = new ObjectReferenceKeyframe { time = (elapsedMs - 10) / 1000f, value = sprites[motion.frames[motion.frames.Length - 1]] };
+            AnimationUtility.SetObjectReferenceCurve(clip, EditorCurveBinding.PPtrCurve("", typeof(SpriteRenderer), "m_Sprite"), keys);
+            var settings = AnimationUtility.GetAnimationClipSettings(clip); settings.loopTime = motion.loop;
+            AnimationUtility.SetAnimationClipSettings(clip, settings);
+            AssetDatabase.CreateAsset(clip, destination + "/" + motion.name + ".anim");
+            controller.AddMotion(clip);
+        }
+        string prefabPath = destination + "/character.prefab";
+        var character = new GameObject("PixelCharacter");
+        try
+        {
+            character.AddComponent<SpriteRenderer>().sprite = sprites[data.animations[0].frames[0]];
+            character.AddComponent<Animator>().runtimeAnimatorController = controller;
+            PrefabUtility.SaveAsPrefabAsset(character, prefabPath);
+        }
+        finally { UnityEngine.Object.DestroyImmediate(character); }
+        AssetDatabase.SaveAssets();
+        return prefabPath;
+    }
+
+    static void Validate(Definition data)
+    {
+        Require(data != null && data.schema_version == 1 && data.sheet == "../sheet.png", "Unsupported sprite import metadata.");
+        Require(data.width > 0 && data.height > 0 && data.width <= 4096 && data.height <= 4096, "Invalid sheet dimensions.");
+        Require(Finite(data.pixels_per_unit) && data.pixels_per_unit > 0 && data.pixels_per_unit <= 4096, "Invalid pixels_per_unit.");
+        Require(data.frames != null && data.frames.Length > 0 && data.frames.Length <= 256, "Invalid frame count.");
+        var identifiers = new HashSet<string>();
+        foreach (var frame in data.frames)
+        {
+            Require(frame != null && frame.rect != null && frame.name != null && Identifier.IsMatch(frame.name) && identifiers.Add(frame.name), "Duplicate or invalid frame name.");
+            Rect r = frame.rect.ToRect(); Vector2 p = frame.pivot;
+            Require(Finite(r.x) && Finite(r.y) && Finite(r.width) && Finite(r.height) && r.x >= 0 && r.y >= 0 && r.width > 0 && r.height > 0
+                && r.xMax <= data.width && r.yMax <= data.height && Mathf.Floor(r.x) == r.x && Mathf.Floor(r.y) == r.y
+                && Mathf.Floor(r.width) == r.width && Mathf.Floor(r.height) == r.height, "Frame lies outside the sheet.");
+            Require(Finite(p.x) && Finite(p.y) && p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1, "Invalid frame pivot.");
+        }
+        Require(data.animations != null && data.animations.Length > 0 && data.animations.Length <= 32, "Invalid animation count.");
+        var animations = new HashSet<string>();
+        foreach (var motion in data.animations)
+        {
+            Require(motion != null && motion.name != null && Identifier.IsMatch(motion.name) && animations.Add(motion.name), "Invalid animation name.");
+            Require(motion.frames != null && motion.frames.Length > 0 && motion.frames.Length <= 256
+                && motion.durations_ms != null && motion.durations_ms.Length == motion.frames.Length, "Invalid animation frames.");
+            for (int i = 0; i < motion.frames.Length; i++)
+                Require(identifiers.Contains(motion.frames[i]) && motion.durations_ms[i] >= 10 && motion.durations_ms[i] <= 60000 && motion.durations_ms[i] % 10 == 0, "Invalid animation frame or timing.");
+        }
+    }
+}
