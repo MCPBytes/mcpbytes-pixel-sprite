@@ -8,6 +8,18 @@ Each candidate is a 128×128 PNG of sixteen 32×32 cells. Rows face down, left, 
 are walk poses and column 3 holds four still poses (arms raised, jump left, jump right, lying). Every
 candidate also comes with frame PNGs, looping walk GIFs, QA metadata, a Godot 4 scene and a Unity 6 importer.
 
+## Examples
+
+Real, unedited outputs of the hosted `create_pixel_sprite` tool, which runs this engine (one variant, seed 42), enlarged
+here with square pixels. More on the [project page](https://mcpbytes.github.io/mcpbytes-pixel-sprite/).
+
+| Sheet | Walk | Prompt |
+|---|---|---|
+| <img src="https://raw.githubusercontent.com/MCPBytes/mcpbytes-pixel-sprite/main/docs/examples/readme/wizard-2x.png" width="256" height="256" alt="An old wizard in a violet star-embroidered robe with a bent pointed hat and a teal crystal staff, in sixteen pixel-art poses"> | <img src="https://raw.githubusercontent.com/MCPBytes/mcpbytes-pixel-sprite/main/docs/examples/readme/wizard-walk-right-4x.gif" width="128" height="128" alt="Animated wizard walking to the right"> | An ancient wizard with a long braided white beard, a deep violet robe embroidered with silver stars, a wide-brimmed pointed hat bent at the tip, a gnarled oak staff crowned with a glowing teal crystal, and a leather spellbook hanging from a rope belt. |
+| <img src="https://raw.githubusercontent.com/MCPBytes/mcpbytes-pixel-sprite/main/docs/examples/readme/robot-2x.png" width="256" height="256" alt="A junkyard robot with a rusty orange drum body, one round camera eye and a bent antenna, in sixteen pixel-art poses"> | <img src="https://raw.githubusercontent.com/MCPBytes/mcpbytes-pixel-sprite/main/docs/examples/readme/robot-walk-down-4x.gif" width="128" height="128" alt="Animated junkyard robot walking down"> | A scrappy junkyard robot built from a rusty orange oil drum body, mismatched green and grey arms, a single big round camera eye with a blue lens, a bent antenna with a red bulb, tank treads for feet, and exposed copper wires. |
+| <img src="https://raw.githubusercontent.com/MCPBytes/mcpbytes-pixel-sprite/main/docs/examples/readme/pirate-2x.png" width="256" height="256" alt="A pirate captain in a gold-trimmed tricorn hat and scarlet coat with a cutlass, in sixteen pixel-art poses"> | <img src="https://raw.githubusercontent.com/MCPBytes/mcpbytes-pixel-sprite/main/docs/examples/readme/pirate-walk-right-4x.gif" width="128" height="128" alt="Animated pirate captain walking to the right"> | A swaggering pirate captain with a black tricorn hat trimmed in gold, a long scarlet coat with brass buttons, a striped shirt, a peg leg, a hook hand, a curved cutlass at the hip and a bright green parrot perched on the shoulder. |
+| <img src="https://raw.githubusercontent.com/MCPBytes/mcpbytes-pixel-sprite/main/docs/examples/readme/astronaut-2x.png" width="256" height="256" alt="An astronaut in a white spacesuit with a gold visor and a grey backpack, in sixteen pixel-art poses"> | <img src="https://raw.githubusercontent.com/MCPBytes/mcpbytes-pixel-sprite/main/docs/examples/readme/astronaut-walk-down-4x.gif" width="128" height="128" alt="Animated astronaut walking down"> | A cheerful astronaut in a bulky white spacesuit with orange stripes, a domed helmet with a reflective gold visor, a chunky grey life-support backpack with two small thrusters, mission patches on the chest and thick padded boots. |
+
 ## Requirements
 
 - An NVIDIA GPU with a CUDA 12.8 driver (R570 or newer) on Windows or Linux. The memory mode is picked

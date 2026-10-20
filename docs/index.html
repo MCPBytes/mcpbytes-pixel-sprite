@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MCPBytes Pixel Sprites Generator</title>
+  <meta name="description" content="Open-source generator of 32×32 pixel-art character sprite sheets with walk animations and Godot and Unity exports. Real examples with the prompts used.">
+  <meta property="og:title" content="MCPBytes Pixel Sprites Generator">
+  <meta property="og:description" content="Describe a character, get a pixel-art sprite sheet with walk cycles and game-engine exports. Runs on your own GPU.">
+  <meta property="og:image" content="https://mcpbytes.github.io/mcpbytes-pixel-sprite/examples/readme/wizard-2x.png">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #09090b; --fg: #ececef; --panel: #0e0f12; --raised: #131418;
+      --line: rgb(255 255 255 / 0.075); --line-strong: rgb(255 255 255 / 0.14);
+      --muted: #9294a0; --faint: #7d808c; --brand: #6e9bff; --brand-soft: rgb(110 155 255 / 0.12);
+      --r: 0.5rem;
+      --sans: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 var(--sans); }
+    a { color: var(--fg); text-underline-offset: 4px; }
+    a:hover { color: var(--brand); }
+    :focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+    .wrap { max-width: 72rem; margin: 0 auto; padding: 0 1.25rem; }
+    .skip { position: absolute; left: -999px; top: 1rem; background: var(--raised); padding: 0.5rem 1rem; border-radius: var(--r); }
+    .skip:focus { left: 1rem; }
+
+    .top { border-bottom: 1px solid var(--line); }
+    .top .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem 1.5rem; padding-block: 1rem; }
+    .brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 600; text-decoration: none; }
+    .brand svg { width: 1.5rem; height: 1.5rem; }
+    .top nav { display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; font-size: 0.9375rem; }
+    .top nav a { color: var(--muted); text-decoration: none; }
+    .top nav a:hover { color: var(--fg); }
+
+    section { padding-block: 4rem; }
+    section + section { border-top: 1px solid var(--line); }
+    .eyebrow { font: 500 0.75rem/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); margin: 0; }
+    h1 { font-size: clamp(2.1rem, 6vw, 3.5rem); line-height: 1.08; letter-spacing: -0.025em; margin: 0.75rem 0 1rem; }
+    h2 { font-size: clamp(1.6rem, 4vw, 2.1rem); line-height: 1.15; letter-spacing: -0.015em; margin: 0.5rem 0 0.75rem; }
+    h3 { font-size: 1.125rem; margin: 0; }
+    .lead { color: var(--muted); font-size: 1.125rem; max-width: 42rem; margin: 0; }
+    p.note { color: var(--muted); max-width: 46rem; }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.75rem; }
+    .button { display: inline-flex; align-items: center; padding: 0.55rem 1rem; border-radius: var(--r); border: 1px solid var(--line-strong);
+              text-decoration: none; font-weight: 500; font-size: 0.9375rem; }
+    .button.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+    .button.primary:hover { background: #fff; color: var(--bg); }
+
+    pre { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 0.9rem 1rem;
+          overflow-x: auto; font: 0.8125rem/1.7 var(--mono); color: var(--fg); }
+    code { font-family: var(--mono); font-size: 0.875em; }
+    p code, li code { background: var(--raised); border: 1px solid var(--line); border-radius: 0.3rem; padding: 0.05rem 0.3rem; }
+
+    /* Square pixels at any whole-number scale, over a checkerboard that shows the transparency. */
+    .px { image-rendering: crisp-edges; image-rendering: pixelated; display: block; }
+    .checker { background-color: #16171b; border-radius: var(--r);
+               background-image: conic-gradient(#202128 25%, transparent 0 50%, #202128 0 75%, transparent 0); background-size: 16px 16px; }
+
+    .walkers { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 2.5rem; }
+    .walkers img { width: 96px; height: 96px; }
+
+    .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; margin-top: 2rem; }
+    @media (min-width: 60rem) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .card { min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: calc(var(--r) * 1.5); padding: 1.25rem;
+            display: grid; gap: 1rem; align-content: start; }
+    .art { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
+    .sheet { width: 256px; height: 256px; }
+    .walks { display: flex; gap: 0.75rem; }
+    figure { margin: 0; }
+    .walks img { width: 96px; height: 96px; }
+    figcaption { font: 0.75rem/1.4 var(--mono); color: var(--faint); margin-top: 0.4rem; text-align: center; }
+    .label { font: 500 0.75rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); margin: 0; }
+    blockquote { margin: 0; padding: 0.75rem 1rem; border-left: 2px solid var(--brand); background: var(--brand-soft);
+                 border-radius: 0 var(--r) var(--r) 0; font-size: 0.9375rem; }
+    .meta { font: 0.8125rem/1.5 var(--mono); color: var(--faint); margin: 0; }
+
+    .split { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2rem; align-items: center; margin-top: 2rem; }
+    @media (min-width: 52rem) { .split { grid-template-columns: auto minmax(0, 1fr); } }
+    /* Whole-number scales only (2× on phones, 3× from 30rem), so every sprite pixel stays square. */
+    .cells { position: relative; width: 256px; }
+    @media (min-width: 30rem) { .cells { width: 384px; } }
+    .cells img { width: 100%; height: auto; aspect-ratio: 1; }
+    .cells::after { content: ""; position: absolute; inset: 0; border-radius: var(--r); pointer-events: none;
+                    background-image: linear-gradient(to right, rgb(255 255 255 / 0.22) 1px, transparent 1px),
+                                      linear-gradient(to bottom, rgb(255 255 255 / 0.22) 1px, transparent 1px);
+                    background-size: 25% 25%; }
+    ol.rows { margin: 0; padding-left: 1.25rem; display: grid; gap: 0.5rem; }
+    ol.rows li::marker { color: var(--faint); font-family: var(--mono); }
+
+    .steps { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; margin-top: 2rem; }
+    @media (min-width: 60rem) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .steps > div { min-width: 0; display: grid; gap: 0.75rem; align-content: start; }
+    .steps h3 + p { margin: 0; color: var(--muted); }
+    ul.plain { margin: 0; padding-left: 1.25rem; color: var(--muted); }
+    ul.plain li { margin-block: 0.35rem; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.9375rem; }
+    th, td { text-align: left; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--faint); font: 500 0.75rem/1.4 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; }
+    td:first-child { white-space: nowrap; font-family: var(--mono); font-size: 0.8125rem; }
+    .table { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); margin-top: 1.5rem; }
+
+    footer { border-top: 1px solid var(--line); padding-block: 2.5rem; color: var(--faint); font-size: 0.875rem; }
+    footer p { margin: 0.35rem 0; max-width: 52rem; }
+
+    /* The walk previews are GIFs, which CSS cannot pause: leave them out for reduced motion (the sheets show every pose). */
+    @media (prefers-reduced-motion: reduce) { .walkers, .walks { display: none; } }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#examples">Skip to the examples</a>
+
+  <header class="top">
+    <div class="wrap">
+      <a class="brand" href="https://mcpbytes.com">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="5" fill="#09090b"/><path d="M12 2.8 18.93 6.8 12 10.8 5.07 6.8Z" fill="#6e9bff"/><path d="M4.03 8.6 10.96 12.6V20.6L4.03 16.6Z" fill="#ececef"/><path d="M13.04 12.6 19.97 8.6V16.6L13.04 20.6Z" fill="#8a8c96"/></svg>
+        MCPBytes
+      </a>
+      <nav aria-label="Page">
+        <a href="#examples">Examples</a>
+        <a href="#sheet">The sheet</a>
+        <a href="#start">Get started</a>
+        <a href="https://github.com/MCPBytes/mcpbytes-pixel-sprite">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <div class="wrap">
+        <p class="eyebrow">Open source · AGPL-3.0 · CLI and MCP server</p>
+        <h1>MCPBytes Pixel Sprites Generator</h1>
+        <p class="lead">
+          Describe a character and get a pixel-art sprite sheet: walk cycles facing down, left, right and up, four still
+          poses, looping walk previews and ready-made Godot and Unity imports. It runs on your own NVIDIA GPU, from the
+          command line or from any MCP client.
+        </p>
+        <div class="walkers" aria-label="Four generated characters walking">
+          <img class="px checker" src="examples/wizard-walk-down.gif" width="96" height="96" alt="Animated wizard walking down">
+          <img class="px checker" src="examples/robot-walk-right.gif" width="96" height="96" alt="Animated junkyard robot walking to the right">
+          <img class="px checker" src="examples/pirate-walk-down.gif" width="96" height="96" alt="Animated pirate captain walking down">
+          <img class="px checker" src="examples/astronaut-walk-right.gif" width="96" height="96" alt="Animated astronaut walking to the right">
+        </div>
+        <div class="actions">
+          <a class="button primary" href="https://github.com/MCPBytes/mcpbytes-pixel-sprite">Source on GitHub</a>
+          <a class="button" href="https://pypi.org/project/mcpbytes-pixel-sprite/">PyPI package</a>
+          <a class="button" href="https://mcpbytes.com/tools/pixel-sprite">Hosted version</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="examples">
+      <div class="wrap">
+        <p class="eyebrow">Examples</p>
+        <h2>Four prompts, four characters.</h2>
+        <p class="note">
+          Real, unedited outputs of the hosted <code>create_pixel_sprite</code> tool, which runs this engine: same models,
+          prompt template and processing. Each was one variant with seed 42, generated on September 29, 2026, with the default
+          32-colour palette, transparent background and walk timing. Shown enlarged with square pixels; the checkerboard is the
+          transparent background.
+        </p>
+
+        <div class="grid">
+          <article class="card">
+            <h3>Wizard</h3>
+            <div class="art">
+              <img class="px checker sheet" src="examples/wizard.png" width="256" height="256" alt="An old wizard in a violet star-embroidered robe with a bent pointed hat and a teal crystal staff, in sixteen pixel-art poses">
+              <div class="walks">
+                <figure><img class="px checker" src="examples/wizard-walk-down.gif" width="96" height="96" loading="lazy" alt="Animated wizard walking down"><figcaption>Down</figcaption></figure>
+                <figure><img class="px checker" src="examples/wizard-walk-right.gif" width="96" height="96" loading="lazy" alt="Animated wizard walking to the right"><figcaption>Right</figcaption></figure>
+              </div>
+            </div>
+            <p class="label">Prompt</p>
+            <blockquote>An ancient wizard with a long braided white beard, a deep violet robe embroidered with silver stars, a wide-brimmed pointed hat bent at the tip, a gnarled oak staff crowned with a glowing teal crystal, and a leather spellbook hanging from a rope belt.</blockquote>
+            <p class="meta">seed 42 · 1 variant · 32-colour palette · transparent</p>
+          </article>
+
+          <article class="card">
+            <h3>Junkyard robot</h3>
+            <div class="art">
+              <img class="px checker sheet" src="examples/robot.png" width="256" height="256" alt="A junkyard robot with a rusty orange drum body, one round camera eye and a bent antenna, in sixteen pixel-art poses">
+              <div class="walks">
+                <figure><img class="px checker" src="examples/robot-walk-down.gif" width="96" height="96" loading="lazy" alt="Animated junkyard robot walking down"><figcaption>Down</figcaption></figure>
+                <figure><img class="px checker" src="examples/robot-walk-right.gif" width="96" height="96" loading="lazy" alt="Animated junkyard robot walking to the right"><figcaption>Right</figcaption></figure>
+              </div>
+            </div>
+            <p class="label">Prompt</p>
+            <blockquote>A scrappy junkyard robot built from a rusty orange oil drum body, mismatched green and grey arms, a single big round camera eye with a blue lens, a bent antenna with a red bulb, tank treads for feet, and exposed copper wires.</blockquote>
+            <p class="meta">seed 42 · 1 variant · 32-colour palette · transparent</p>
+          </article>
+
+          <article class="card">
+            <h3>Pirate captain</h3>
+            <div class="art">
+              <img class="px checker sheet" src="examples/pirate.png" width="256" height="256" loading="lazy" alt="A pirate captain in a gold-trimmed tricorn hat and scarlet coat with a cutlass, in sixteen pixel-art poses">
+              <div class="walks">
+                <figure><img class="px checker" src="examples/pirate-walk-down.gif" width="96" height="96" loading="lazy" alt="Animated pirate captain walking down"><figcaption>Down</figcaption></figure>
+                <figure><img class="px checker" src="examples/pirate-walk-right.gif" width="96" height="96" loading="lazy" alt="Animated pirate captain walking to the right"><figcaption>Right</figcaption></figure>
+              </div>
+            </div>
+            <p class="label">Prompt</p>
+            <blockquote>A swaggering pirate captain with a black tricorn hat trimmed in gold, a long scarlet coat with brass buttons, a striped shirt, a peg leg, a hook hand, a curved cutlass at the hip and a bright green parrot perched on the shoulder.</blockquote>
+            <p class="meta">seed 42 · 1 variant · 32-colour palette · transparent</p>
+          </article>
+
+          <article class="card">
+            <h3>Astronaut</h3>
+            <div class="art">
+              <img class="px checker sheet" src="examples/astronaut.png" width="256" height="256" loading="lazy" alt="An astronaut in a white spacesuit with a gold visor and a grey backpack, in sixteen pixel-art poses">
+              <div class="walks">
+                <figure><img class="px checker" src="examples/astronaut-walk-down.gif" width="96" height="96" loading="lazy" alt="Animated astronaut walking down"><figcaption>Down</figcaption></figure>
+                <figure><img class="px checker" src="examples/astronaut-walk-right.gif" width="96" height="96" loading="lazy" alt="Animated astronaut walking to the right"><figcaption>Right</figcaption></figure>
+              </div>
+            </div>
+            <p class="label">Prompt</p>
+            <blockquote>A cheerful astronaut in a bulky white spacesuit with orange stripes, a domed helmet with a reflective gold visor, a chunky grey life-support backpack with two small thrusters, mission patches on the chest and thick padded boots.</blockquote>
+            <p class="meta">seed 42 · 1 variant · 32-colour palette · transparent</p>
+          </article>
+        </div>
+
+        <p class="note">
+          To try one yourself: <code>mcpbytes-pixel-sprite generate "&lt;prompt&gt;" --seed 42</code>. The same seed and inputs
+          reproduce a result on the same hardware and memory mode; individual pixels can differ between GPUs.
+        </p>
+      </div>
+    </section>
+
+    <section id="sheet">
+      <div class="wrap">
+        <p class="eyebrow">The sheet</p>
+        <h2>Sixteen 32×32 cells, one character.</h2>
+        <div class="split">
+          <div class="cells">
+            <img class="px checker" src="examples/wizard.png" width="384" height="384" loading="lazy" alt="The wizard sheet with its four rows and four columns of 32 by 32 pixel cells outlined">
+          </div>
+          <div>
+            <p class="note" style="margin-top: 0">Every sheet is a 128×128 PNG with one shared palette. Columns 1–3 of each row are walk poses; column 4 holds a still pose.</p>
+            <ol class="rows">
+              <li>Facing down: three walk poses, then arms raised.</li>
+              <li>Facing left: three walk poses, then jump left.</li>
+              <li>Facing right: three walk poses, then jump right.</li>
+              <li>Facing up: three walk poses, then lying down.</li>
+            </ol>
+            <p class="note">
+              The walk previews loop poses 1, 2, 3, 2: three drawn poses in a four-frame cycle. Results come marked
+              <code>unreviewed</code> or <code>needs_review</code>, never approved: check anatomy, facing and transparency yourself.
+            </p>
+          </div>
+        </div>
+
+        <div class="table">
+          <table>
+            <thead><tr><th scope="col">File</th><th scope="col">What it holds</th></tr></thead>
+            <tbody>
+              <tr><td>raw_N.png</td><td>The model's 512×512 render, before any processing.</td></tr>
+              <tr><td>sprite_N.png</td><td>The 128×128 sheet: transparent background, one shared palette.</td></tr>
+              <tr><td>sprite_N.json</td><td>Frame rectangles and pivots, animations, palette, QA status and warnings.</td></tr>
+              <tr><td>sprite_N.zip</td><td>Sheet, 16 frames, 4 walk GIFs, manifest, QA and provenance, a Godot 4 scene, a Unity 6 importer and <code>IMPORTING.md</code>.</td></tr>
+              <tr><td>generation.json</td><td>Effective options, seeds and model revisions (your description is left out).</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="start">
+      <div class="wrap">
+        <p class="eyebrow">Get started</p>
+        <h2>Your GPU, or ours.</h2>
+        <div class="steps">
+          <div>
+            <h3>On your NVIDIA GPU</h3>
+            <ul class="plain">
+              <li>A CUDA 12.8 driver (R570 or newer) on Windows or Linux.</li>
+              <li>About 16 GB of disk for the model files, downloaded once from Hugging Face at pinned commits.</li>
+              <li><a href="https://docs.astral.sh/uv/">uv</a>, or Python 3.11–3.13 with pip.</li>
+            </ul>
+            <pre><code>uvx --torch-backend=auto mcpbytes-pixel-sprite download
+uvx --torch-backend=auto mcpbytes-pixel-sprite generate \
+  "A forest ranger with a green hood" --seed 42</code></pre>
+          </div>
+          <div>
+            <h3>From any MCP client</h3>
+            <p>Run <code>download</code> once, then add the server; it provides one tool, <code>create_pixel_sprite</code>.</p>
+            <pre><code>{
+  "mcpServers": {
+    "pixel-sprite": {
+      "command": "uvx",
+      "args": ["--torch-backend=auto",
+               "mcpbytes-pixel-sprite", "mcp"]
+    }
+  }
+}</code></pre>
+          </div>
+          <div>
+            <h3>No NVIDIA GPU?</h3>
+            <p>
+              <code>--cloud</code> sends the job to MCPBytes GPUs for prepaid credits, with the same files back. Create an API key at
+              <a href="https://console.mcpbytes.com/keys">console.mcpbytes.com</a>.
+            </p>
+            <pre><code>export MCPBYTES_API_KEY=...
+uvx mcpbytes-pixel-sprite generate "A forest ranger" --cloud</code></pre>
+          </div>
+          <div>
+            <h3>Options</h3>
+            <p>
+              <code>--variants 1-4</code>, <code>--reference image.png</code>, <code>--opaque</code>,
+              <code>--palette-colors 16|32|64</code>, <code>--palette</code>, <code>--frame-duration-ms</code> and
+              <code>--seed</code>. The <a href="https://github.com/MCPBytes/mcpbytes-pixel-sprite#readme">README</a> covers each one,
+              the GPU memory modes and the pinned models.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p>
+        Code under the GNU AGPL v3.0 only. The files copied into every export (<code>IMPORTING.md</code> and the Unity importer)
+        are MIT-0, and the sprites you generate are yours. Model weights come from their publishers, under their own licences.
+      </p>
+      <p>"MCPBytes" is a trade name of King Of The Hour, LLC; the licence grants no rights to it.</p>
+      <p>
+        <a href="https://github.com/MCPBytes/mcpbytes-pixel-sprite">GitHub</a> ·
+        <a href="https://pypi.org/project/mcpbytes-pixel-sprite/">PyPI</a> ·
+        <a href="https://mcpbytes.com">mcpbytes.com</a>
+      </p>
+    </div>
+  </footer>
+</body>
+</html>
